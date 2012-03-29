@@ -1,0 +1,106 @@
+
+	 *********************************************************************
+	*   Thank you for your interest in Data Mall 		  	      *
+	*   Before you start, below are the information that could help       *
+	*        you to have a better understanding of the process. 	      *
+	*   You can email to LTA-MyTransport@LTA.GOV.SG for further enquiries *
+	 *********************************************************************
+
+1. Sample Data generation tool:    http://datamall.mytransport.sg/tool.aspx
+
+This tool is provided to generate the sample data for your reference.
+	step1. Key in the AccountKey which is assigned to you in the email
+	step2. Click "generate GUID", it would just be a random string which is 32bit in length.
+	step3. Choose the dataset that is authorized to you. 
+	       The URL for you to access the specific dataset will appear.
+	step3. Click "submit". The sample data will appear in the bottom box.
+
+
+
+2. Details of the data in Data Mall:
+
+	Name of each dataset:
+	http://datamall.mytransport.sg/ltaodataservice.svc/
+
+	The data structure for each dataset: 
+	http://datamall.mytransport.sg/ltaodataservice.svc/$metadata   
+
+
+	
+3. Code snippet for your reference    
+   Please be noted that the AccountKey is the one sent to you in the email.
+   UniqueUserID is just a random string which is 32bit in length, you can generate it from 1-Step2
+
+   *************************************************************************  
+   *  .NET – to access a complete list of incidents near a certain location *
+   *************************************************************************  
+
+public List<IncidentEntry> GetIncidentFromNimbusLTA(string AccountKey, string UniqueUserID)
+    {
+
+        System.Net.WebRequest wr=
+          HttpWebRequest.Create(
+            "https://datamall.mytransport.sg/ltaodataservice.svc/IncidentSet?Latitude=1.3&Longitude=103.85&Distance=2000");
+        wr.Headers.Add("AccountKey",AccountKey);
+        wr.Headers.Add("UniqueUserID",UniqueUserID);
+        wr.Method = "GET";
+        WebResponse res = wr.GetResponse();
+        string resStr
+         = new System.IO.StreamReader(res.GetResponseStream()).ReadToEnd();
+
+      
+        List<IncidentEntry> results
+          = (from item in XElement.Parse(resStr).Descendants(atomNS + "entry")
+            let incident = item.Element(atomNS + "content").Element(mNS +"properties")
+                select new IncidentEntry() {
+                IncidentID incident.Element(dNS +"IncidentID").Value,
+                Message = incident.Element(dNS +"Message").Value,
+                Lat = incident.Element(dNS + "Latitude").Value,
+                Lon = incident.Element(dNS + "Longitude").Value
+            }).ToList();
+
+        return results;
+    }
+
+
+
+   **************************************************************************      
+   * Java  – to access a complete list of incidents near a certain location 
+   **************************************************************************      
+
+public ArrayList<ISTraffic> getCameras(String accountKey, String uniqueId) {
+  trafficList = new ArrayList<CISTraffic>();
+  try {
+    URL _url = new URL("https://datamall.mytransport.sg/ltaodataservice.svc/IncidentSetLatitude=1.3&Longitude=103.85&Distance=2000");
+    URLConnection _urlConn = _url.openConnection();
+    _urlConn.setRequestProperty("accept", "*/*");
+    _urlConn.addRequestProperty("AccountKey", accountKey);
+    _urlConn.addRequestProperty("UniqueUserID", uniqueId);
+    BufferedReader br = new BufferedReader(new InputStreamReader(_urlConn.getInputStream()));
+    String line = null;
+    StringBuilder strBuilder = new StringBuilder();
+
+    while ((line = br.readLine()) != null) {
+      strBuilder.append(line);
+      System.out.println(line);
+    }
+
+    String[] IProperties = strBuilder.toString().split("<m:properties>");
+    for (String str : IProperties) {
+      ISTraffic traffic = new ISTraffic();
+      traffic.setIncidentID(Utils.getStringBetween(str, "<d:IncidentID m:type=\"Edm.Int32\">", "</d:IncidentID>"));
+      traffic.setMessage(Utils.getStringBetween(str, "<d:Message>", "</d:Message>"));
+      traffic.setCLatitude(Utils.getStringBetween(str, "<d:Latitude m:type=\"Edm.Double\">", "</d:Latitude>"));
+      traffic.setCLongitude(Utils.getStringBetween(str, "<d:Longitude m:type=\"Edm.Double\">", "</d:Longitude>"));
+      trafficList.add(traffic);
+      }
+    } catch (MalformedURLException ex) {
+        ex.printStackTrace();
+    } catch (IOException ex) {
+        ex.printStackTrace();
+    } catch (Exception ex) {
+        ex.printStackTrace();
+    }
+    return trafficList;
+}
+
